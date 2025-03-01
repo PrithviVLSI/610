@@ -1,0 +1,98 @@
+SNR
+Generating a Tone with Noise
+
+
+import numpy as np
+import matplotlib.pyplot as plt
+from scipy.signal import windows
+
+# Parameters
+fs = 5e6  # Sampling frequency
+f_tone = 2e6  # Tone frequency
+A = 1  # Amplitude
+SNR_dB = 50
+N = 1024  # Number of samples
+t = np.arange(N) / fs
+
+# Generate sine wave
+signal = A * np.sin(2 * np.pi * f_tone * t)
+
+# Calculate noise variance
+noise_var = A**2 / (10**(SNR_dB / 10))
+noise = np.sqrt(noise_var) * np.random.randn(N)
+noisy_signal = signal + noise
+
+# Compute and plot Power Spectral Density (PSD)
+def plot_psd(signal, title):
+    psd = np.abs(np.fft.fft(signal))**2 / N
+    freqs = np.fft.fftfreq(N, d=1/fs)
+    plt.figure(figsize=(8, 4))
+    plt.plot(freqs[:N//2], 10 * np.log10(psd[:N//2]))
+    plt.xlabel('Frequency (Hz)')
+    plt.ylabel('Power (dB)')
+    plt.title(title)
+    plt.grid()
+    plt.show()
+
+plot_psd(noisy_signal, 'PSD of Noisy Signal')
+
+Windowing Effects on SNR
+
+# Apply windows
+windows_list = {'Hanning': windows.hann(N), 'Hamming': windows.hamming(N), 'Blackman': windows.blackman(N)}
+for win_name, win in windows_list.items():
+    windowed_signal = noisy_signal * win
+    plot_psd(windowed_signal, f'PSD with {win_name} Window')
+
+
+2. QUANTIZATION
+
+6 bit 
+
+def quantize(signal, bits):
+    levels = 2**bits
+    return np.round(signal * levels) / levels
+
+# Generate a 200 MHz sine wave
+fs_quant = 400e6
+f_tone = 200e6
+t_quant = np.arange(N) / fs_quant
+signal_quant = np.sin(2 * np.pi * f_tone * t_quant)
+
+# Quantize signal
+quantized_signal_6bit = quantize(signal_quant, 6)
+plot_psd(quantized_signal_6bit, 'PSD of 6-bit Quantized Signal')
+
+
+Incommensurate Sampling Rate
+
+fs_incommensurate = 410e6  # Incommensurate sampling rate
+t_inc = np.arange(N) / fs_incommensurate
+signal_inc = np.sin(2 * np.pi * f_tone * t_inc)
+quantized_signal_inc = quantize(signal_inc, 6)
+plot_psd(quantized_signal_inc, 'PSD with Incommensurate Sampling')
+
+
+12 bit 
+
+quantized_signal_12bit = quantize(signal_quant, 12)
+plot_psd(quantized_signal_12bit, 'PSD of 12-bit Quantized Signal')
+
+
+Windowing and Noise Addition
+
+# Add noise for 38 dB SNR
+noise_var_38dB = A**2 / (10**(38 / 10))
+noise_38dB = np.sqrt(noise_var_38dB) * np.random.randn(N)
+noisy_signal_38dB = signal_quant + noise_38dB
+
+# Quantize noisy signal
+quantized_noisy_signal_12bit = quantize(noisy_signal_38dB, 12)
+
+# Apply Hanning window
+hanning_win = windows.hann(N)
+windowed_noisy_signal = quantized_noisy_signal_12bit * hanning_win
+plot_psd(windowed_noisy_signal, 'PSD of Noisy 12-bit Quantized Signal with Hanning Window')
+
+
+
